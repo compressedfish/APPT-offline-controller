@@ -3,7 +3,7 @@ Offline CNC fob for FluidNC/grbl APPT router
 ---
 Presents a easy(/ier) to use UI for a CNC router performing APPT treatment of planar composite material.
 
-Hardware used
+Hardware used:
 - CNC router
     1. MKS TinyBee
     2. 3x TB6600
