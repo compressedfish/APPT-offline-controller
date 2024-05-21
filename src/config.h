@@ -6,3 +6,4 @@
 #define MAX_X 				1000	// mm
 #define MAX_Y 				1000	// mm
 #define WRITEBUFFER_SIZE 	32
+#define DEBOUNCE            50

@@ -4,7 +4,7 @@
 extern "C" {
 #endif
 
-extern bool newStats;
+extern volatile bool newStats;
 
 extern void printMenu();
 extern unsigned char getStatus();

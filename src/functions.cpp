@@ -1,9 +1,10 @@
 #include <Arduino.h>
 #include <avr/wdt.h>
+#include <TimerOne.h>
 #include "functions.h"
 #include "utility.h"
 
-bool newStats = false;
+volatile bool newStats = false;
 int axes[2];
 int feeds[2];
 int bf[2];
@@ -12,7 +13,7 @@ char receiveBuffer[128];
 
 void printMenu() {
 	lcdprint(17, 0, "  0");
-	lcdprint(1, 1, "Move Y       Y:  0");
+	lcdprint(1, 1, "Move Y        Y:  0");
 	lcdprint(1, 2, "FR:%3d FS:  0", feedrate);
 	lcdprint(1, 3, "APPT C:%3d R:%+3d", cyclesY, cyclesN);
 }
@@ -27,9 +28,9 @@ uint8_t getStatus() {				// https://forum.arduino.cc/t/serial-input-basics-updat
 	}
 	receiveBuffer[endC] = '\0';
 	split(startC, &mainNext, '|');
-  if (*mainNext == '\0') {
-      return 0;  // Malformed report
-  }
+	if (*mainNext == '\0') {
+		return 0;  // Malformed report
+	}
 	state = startC;
 	while (*mainNext) {
 		startC = mainNext;
@@ -58,8 +59,8 @@ uint8_t getStatus() {				// https://forum.arduino.cc/t/serial-input-basics-updat
 void printStatus() {
 	lcdprint(17, 0, "%3d", (int)(axes[0]/10));
 	lcdprint(17, 1, "%3d", (int)(axes[1]/10));
-	lcdprint(1, 2, "FR:%3dFS:%3d %5c", feedrate, (int)(feeds[0]/600), state);
-	lcdprint(1, 3, "APPT C:%+3dR:%3d", cyclesY, cyclesN);
+	lcdprint(1, 2, "FR:%3d FS:%3d %5c", feedrate, (int)(feeds[0]/600), state);
+	lcdprint(1, 3, "APPT C:%+3dR:%4d", cyclesY, cyclesN);
 	switch (menuPos) {
 		case 0b00010000:
 			lcdSetCursor(0, 0);
@@ -76,36 +77,39 @@ void printStatus() {
 			lcdSetCursor(0, 3);
 			break;
 		case 0b10000100:
-			lcdSetCursor(5, 3);
+			lcdSetCursor(6, 3);
 			break;
 		case 0b10001000:
 			lcdSetCursor(11, 3);
 	}
-	if ((menuPos & 0b00001111) > 0) lcdBlink();
+	if ((menuPos & 0b00001111) > 0 || APPTFlag) lcdBlink();
 	else lcdNoBlink();
 }
 
 void homeMachine() {
+	Timer1.detachInterrupt();
 	lcdBlink();
-	while (!getStatus());			// wait until machine is online
+	//while (!getStatus());			// wait until machine is online
+	//Serial.print("homeing");
 	print("$H");
-	while (axes[0] != 0 || axes[1] != 0) getStatus();
+	//while (axes[0] != 0 || axes[1] != 0) getStatus();
 	if (startFlag) {
-		attachInterrupt(digitalPinToInterrupt(2), encISR, CHANGE);
-		attachInterrupt(digitalPinToInterrupt(3), encISR, CHANGE);
+		Timer1.attachInterrupt(encISR, 10000);	// update encoder every 10ms
 		zeroEncoder();
 		printMenu();
 	}
 	print("G92 X0 Y0");
 	lcdSetCursor(0,0);
 	lcdNoBlink();
+	zeroEncoder();
+	Timer1.attachInterrupt(encISR, 10000);
 }
 
 void kill() {								// resets the CNC controller, and also resets itself for good measure
 	print((char)0x18);
-	wdt_disable();						// https://forum.arduino.cc/t/soft-reset-and-arduino/367284/5
-  wdt_enable(WDTO_15MS);
-  while (1);
+	wdt_disable();							// https://forum.arduino.cc/t/soft-reset-and-arduino/367284/5
+	wdt_enable(WDTO_15MS);
+	while (1);
 }
 
 void performAPPT() {
@@ -122,8 +126,7 @@ void performAPPT() {
 		limits[1] = abs(limits[1]);
 	}
 	// disable inputs for safety, allow encoder button to function as reset
-	detachInterrupt(digitalPinToInterrupt(2));	
-	detachInterrupt(digitalPinToInterrupt(3));
+	Timer1.detachInterrupt();
 	detachInterrupt(digitalPinToInterrupt(7));
 	attachInterrupt(digitalPinToInterrupt(7), kill, RISING); // the urge to kill is rising
 	do {
@@ -143,8 +146,8 @@ void performAPPT() {
 		i--;
 	} while (i > 1);
 	detachInterrupt(digitalPinToInterrupt(7));
-	attachInterrupt(digitalPinToInterrupt(2), encISR, CHANGE);
-	attachInterrupt(digitalPinToInterrupt(3), encISR, CHANGE);
+	zeroEncoder();
+	Timer1.attachInterrupt(encISR, 10000);
 	attachInterrupt(digitalPinToInterrupt(7), btnISR, RISING);
 	lcdprint(17, 3, "   ");
 }

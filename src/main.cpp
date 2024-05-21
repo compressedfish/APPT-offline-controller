@@ -5,12 +5,13 @@ unsigned long startTime = 0;
 
 void setup() {
 	hwInit();
+	Serial.print("test");
 	startTime = millis();
 }
 
 void loop() {
 	if (millis() - startTime >= LOOP_MS) {
-		getStatus();
+		//getStatus();
 		if (newStats) {
 			printStatus();
 			newStats = false;
@@ -22,6 +23,7 @@ void loop() {
 		startTime = millis();
 	}
 	if ((PORTD & 0b01000000) == 0) {	// normal non-interrupt killswitch
+		Serial.print("kill");
 		kill();
 	}
 	if (homeFlag) {

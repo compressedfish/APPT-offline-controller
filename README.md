@@ -16,4 +16,4 @@ Hardware used:
 todo:
 - tune steps per mm, accelerations, max feedrates
 - install and configure endstops
-- construct, test and debug CNC fob (don't even know if any of the stuff works yet)
+- test and debug CNC fob on actual machine
